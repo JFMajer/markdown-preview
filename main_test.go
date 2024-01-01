@@ -2,13 +2,15 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
 const (
 	inputFile  = "./testdata/example.md"
-	resultFile = "example.html"
 	goldenFile = "./testdata/example.html"
 )
 
@@ -28,10 +30,15 @@ func TestParseContent(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	if err := run(inputFile); err != nil {
+	var buffer bytes.Buffer
+	err := run(inputFile, &buffer)
+	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := os.ReadFile(resultFile)
+	resultFile := strings.TrimSpace(buffer.String())
+	fmt.Printf("result file is: %s\n", resultFile)
+	result, err := os.ReadFile(filepath.Join("./tmp", resultFile))
+	fmt.Printf("created path is: %s\n", filepath.Join("./tmp", resultFile))
 	if err != nil {
 		t.Fatal(err)
 	}

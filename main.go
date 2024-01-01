@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -39,14 +40,14 @@ func main() {
 	}
 
 	// Call the run function and handle any errors
-	err := run(*filename)
+	err := run(*filename, os.Stdout)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-func run(filename string) error {
+func run(filename string, out io.Writer) error {
 	// Create a temporary directory to store the output HTML files
 	err := os.Mkdir("./tmp", 0755)
 	// If the directory exists ignore the error
@@ -67,8 +68,17 @@ func run(filename string) error {
 	baseFilename := strings.TrimSuffix(filepath.Base(filename), ".md")
 	timestamp := time.Now().Format("20060102-150405")
 	outName := fmt.Sprintf("%s-%s.html", baseFilename, timestamp)
+	_, err = out.Write([]byte(outName))
+	if err != nil {
+		return err
+	}
 	// Save the output HTML to a file in the temporary directory
-	return saveHTML(outName, htmlComplete)
+	err = saveHTML(outName, htmlComplete)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 func parseMarkdown(input []byte) []byte {
