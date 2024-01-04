@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -16,18 +17,24 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
+type content struct {
+	Title string
+	Body  template.HTML
+}
+
 const (
-	// HTMLHeader and HTMLFooter are used to wrap the converted Markdown content
-	HTMLHeader = `<!DOCTYPE html>
+	// Switching to go templates
+	defaultTemplate = `<!DOCTYPE html>
 	<html>
 	<head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-	<title>Markdown Previewer</title>
+	<title>{{ .Title }}</title>
 	</head>
 	<body>
+		{{ .Body }}
+	</body>
+	</html>
 	`
-	HTMLFooter = `</body>
-	</html>`
 )
 
 func main() {
@@ -64,7 +71,10 @@ func run(filename string, out io.Writer, skipPreview bool) error {
 	// Convert the Markdown to HTML
 	htmlData := parseMarkdown(input)
 	// Combine the HTML header, body, and footer
-	htmlComplete := generateHTML(HTMLHeader, htmlData, HTMLFooter)
+	htmlComplete, err := generateHTML(htmlData)
+	if err != nil {
+		return err
+	}
 	// Create the output filename, adding a timestamp to make it unique
 	baseFilename := strings.TrimSuffix(filepath.Base(filename), ".md")
 	timestamp := time.Now().Format("20060102-150405")
@@ -102,14 +112,25 @@ func saveHTML(filename string, data []byte, skipPreview bool) error {
 	return nil
 }
 
-func generateHTML(header string, body []byte, footer string) []byte {
-	// Combine the header, body, and footer into a single byte slice
-	var b bytes.Buffer
-	b.WriteString(header)
-	b.Write(body)
-	b.WriteString(footer)
+func generateHTML(body []byte) ([]byte, error) {
+	// Parse the content of defaultTemplate into new template
+	tmpl, err := template.New("default").Parse(defaultTemplate)
+	if err != nil {
+		return nil, err
+	}
+	// Create a new content struct with the title and body
+	c := content{
+		Title: "My Markdown Preview",
+		Body:  template.HTML(body),
+	}
+	// Create a new buffer to hold the output HTML
+	var buf bytes.Buffer
+	// Execute the template with the content struct and write the output to the buffer
+	if err := tmpl.Execute(&buf, c); err != nil {
+		return nil, err
+	}
 
-	return b.Bytes()
+	return buf.Bytes(), nil
 }
 
 func openWebBrowser(filename string, skipPreview bool) error {
