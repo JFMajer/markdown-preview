@@ -33,6 +33,7 @@ const (
 func main() {
 	// Parse command line arguments
 	filename := flag.String("file", "", "Markdown file to preview")
+	skipPreview := flag.Bool("s", false, "Skip auto-preview")
 	flag.Parse()
 	if *filename == "" {
 		flag.Usage()
@@ -40,14 +41,14 @@ func main() {
 	}
 
 	// Call the run function and handle any errors
-	err := run(*filename, os.Stdout)
+	err := run(*filename, os.Stdout, *skipPreview)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-func run(filename string, out io.Writer) error {
+func run(filename string, out io.Writer, skipPreview bool) error {
 	// Create a temporary directory to store the output HTML files
 	err := os.Mkdir("./tmp", 0755)
 	// If the directory exists ignore the error
@@ -68,12 +69,12 @@ func run(filename string, out io.Writer) error {
 	baseFilename := strings.TrimSuffix(filepath.Base(filename), ".md")
 	timestamp := time.Now().Format("20060102-150405")
 	outName := fmt.Sprintf("%s-%s.html", baseFilename, timestamp)
-	_, err = out.Write([]byte(outName))
+	_, err = out.Write([]byte(outName + "\n"))
 	if err != nil {
 		return err
 	}
 	// Save the output HTML to a file in the temporary directory
-	err = saveHTML(outName, htmlComplete)
+	err = saveHTML(outName, htmlComplete, skipPreview)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func parseMarkdown(input []byte) []byte {
 	return html
 }
 
-func saveHTML(filename string, data []byte) error {
+func saveHTML(filename string, data []byte, skipPreview bool) error {
 	// Write the HTML data to a file in the temporary directory
 	err := os.WriteFile(filepath.Join("./tmp", filename), data, 0644)
 	if err != nil {
@@ -97,7 +98,7 @@ func saveHTML(filename string, data []byte) error {
 	}
 	// Open the HTML file in the default web browser
 	fullPath := filepath.Join("./tmp", filename)
-	openWebBrowser(fullPath)
+	openWebBrowser(fullPath, skipPreview)
 	return nil
 }
 
@@ -111,12 +112,17 @@ func generateHTML(header string, body []byte, footer string) []byte {
 	return b.Bytes()
 }
 
-func openWebBrowser(filename string) error {
+func openWebBrowser(filename string, skipPreview bool) error {
+	// defer os.Remove(filename) // Remove the temporary HTML file after opening the browser)
 	// Open the output HTML file in the default web browser
+	if skipPreview {
+		return nil
+	}
 	cmd := exec.Command("xdg-open", filename)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to open web browser: %w", err)
 	}
+	time.Sleep(time.Second)
 	return nil
 
 }

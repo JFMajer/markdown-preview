@@ -31,7 +31,7 @@ func TestParseContent(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	var buffer bytes.Buffer
-	err := run(inputFile, &buffer)
+	err := run(inputFile, &buffer, true)
 	if err != nil {
 		t.Fatal(err)
 	}
